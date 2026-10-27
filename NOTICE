@@ -1,0 +1,20 @@
+FORMA
+
+TinyMCE 8.10.0: GPL-2.0-or-later. License and copyright notices are
+included in public/assets/vendor/tinymce. https://www.tiny.cloud/
+
+jQuery 3.7.1: MIT. Copyright OpenJS Foundation and other contributors.
+The license notice is retained in public/assets/vendor/jquery-3.7.1.min.js.
+https://jquery.org/license/
+
+Interior photographs: Unsplash. https://unsplash.com/license
+sofa.jpg: https://images.unsplash.com/photo-1555041469-a586c61ea9bc
+living.jpg: https://images.unsplash.com/photo-1600210492486-724fe5c67fb0
+chair.jpg: https://images.unsplash.com/photo-1598300042247-d088f8ab3a91
+dining.jpg: https://images.unsplash.com/photo-1617806118233-18e1de247200
+room.jpg: https://images.unsplash.com/photo-1616486338812-3dadae4b4ace
+bedroom.jpg: https://images.unsplash.com/photo-1615874694520-474822394e73
+Photographs illustrate the collection and are not a separate image product.
+
+Maps: Yandex Maps. Map tiles are served by Yandex, not included in this repository.
+https://yandex.ru/maps/

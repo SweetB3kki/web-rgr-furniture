@@ -1,0 +1,1 @@
+<header class="page-heading"><span class="eyebrow"><?=t('ФАБРИКА ФОРМА','FORMA FACTORY')?></span><h1><?=h(tr($page))?></h1></header><article class="article-body"><?php if($page['image']):?><img class="article-cover" src="<?=h($page['image'])?>" alt="<?=h(tr($page))?>" width="1200" height="700"><?php endif;?><div class="rich"><?=Html::clean(tr($page,'body'))?></div></article>

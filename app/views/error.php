@@ -1,0 +1,1 @@
+<section class="success"><span class="eyebrow"><?=h($status)?></span><h1><?=t('Эта страница<br>недоступна.','This page<br>is unavailable.')?></h1><p><?=h($message)?></p><a class="button" href="/"><?=t('На главную','Go home')?> ↗</a></section>
