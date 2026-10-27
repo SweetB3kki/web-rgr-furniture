@@ -34,5 +34,5 @@ $articles=[
  ['promotion','collection-pickup','Самовывоз без дополнительной платы','Complimentary collection','<p>При оформлении заказа выберите самовывоз: дополнительная плата за получение не начисляется. Стоимость мебели остаётся указанной в каталоге.</p>','<p>Select collection when placing your order: no delivery fee will be added. Furniture prices remain as listed in the catalog.</p>','sofa.jpg'],
 ];
 foreach($articles as [$kind,$slug,$ru,$en,$br,$be,$image])DB::run('INSERT INTO articles(kind,slug,title_ru,title_en,body_ru,body_en,publish_date,image) VALUES (?,?,?,?,?,?,?,?)',[$kind,$slug,$ru,$en,$br,$be,date('Y-m-d'),$image?'/assets/images/'.$image:'']);
-DB::run('INSERT INTO contacts VALUES (1,?,?,?,?,?,?,?,?,?,?)',['Мебельная фабрика ФОРМА','FORMA furniture factory','Севастополь, ул. Ленина, 1','1 Lenina Street, Sevastopol','+7 900 000-00-00','factory@forma.example',44.6100,33.5250,'Пн–Сб: 10:00–19:00','Mon–Sat: 10:00–19:00']);
+DB::run('INSERT INTO contacts VALUES (1,?,?,?,?,?,?,?,?,?,?)',['Мебельная фабрика ФОРМА','FORMA furniture factory','Севастополь, ул. Ленина, 3','3 Lenina Street, Sevastopol','+7 900 000-00-00','factory@forma.example',44.6100,33.5250,'Пн–Сб: 10:00–19:00','Mon–Sat: 10:00–19:00']);
 echo "Initial catalog created.\n";

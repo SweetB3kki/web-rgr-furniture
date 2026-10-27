@@ -48,7 +48,7 @@ try {
 }catch(Throwable $e){
     $status=$e instanceof HttpError?$e->status:500;http_response_code($status);
     if($status===500)error_log((string)$e);
-    $message=$status===500?t('Ошибка сервера. Проверьте подключение к базе и журнал сервера.','Server error. Check database connection and server logs.'):$e->getMessage();
+    $message=$status===500?t('Не удалось загрузить страницу. Попробуйте ещё раз немного позже.','We could not load this page. Please try again shortly.'):$e->getMessage();
     if(str_contains($_SERVER['HTTP_ACCEPT']??'','application/json')||$path==='/order/quote'||$path==='/admin/upload') {header('Content-Type: application/json; charset=utf-8');echo json_encode(['error'=>$message],JSON_UNESCAPED_UNICODE);}
     elseif($status===500)echo '<!doctype html><html lang="'.h(lang()).'"><meta charset="utf-8"><title>500</title><h1>500</h1><p>'.h($message).'</p></html>';
     else View::show('error',['pageTitle'=>(string)$status,'message'=>$message,'status'=>$status]);
