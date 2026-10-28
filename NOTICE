@@ -18,3 +18,7 @@ Photographs illustrate the collection and are not a separate image product.
 
 Maps: Yandex Maps. Map tiles are served by Yandex, not included in this repository.
 https://yandex.ru/maps/
+
+TLS CA certificate bundle: Mozilla trust store, distributed by curl.
+https://curl.se/docs/caextract.html
+https://curl.se/ca/cacert.pem

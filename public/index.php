@@ -6,6 +6,7 @@ $method=$_SERVER['REQUEST_METHOD'];$site=new SiteController();$admin=new AdminCo
 if($path==='/favicon.ico'){http_response_code(204);exit;}
 if(str_starts_with($path,'/admin'))header('Cache-Control: no-store');
 $routes=[
+ ['GET','~^/uploads/([a-f0-9]{32}\.(?:jpg|png|webp))$~',fn($filename)=>Upload::serve($filename)],
  ['GET','~^/$~',fn()=>$site->home()],
  ['GET','~^/language$~',fn()=>$site->language()],
  ['GET','~^/catalog$~',fn()=>$site->catalog()],

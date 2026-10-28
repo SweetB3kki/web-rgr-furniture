@@ -2,6 +2,7 @@
 declare(strict_types=1);
 class Mailer {
     public static function sendOrder(int $id): bool {
+        if (!config('mail_enabled')) return false;
         $order = DB::one('SELECT * FROM orders WHERE id=?', [$id]);
         $outbox = DB::one('SELECT * FROM mail_outbox WHERE order_id=?', [$id]);
         if (!$order || !$outbox || $outbox['status'] === 'sent') return false;

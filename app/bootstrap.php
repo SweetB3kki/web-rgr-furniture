@@ -25,8 +25,10 @@ function verifyCsrf(): void {
     if (!is_string($token) || !hash_equals(csrf(), $token)) { throw new HttpError(419, t('Сессия формы истекла. Обновите страницу.', 'Form session expired. Reload the page.')); }
 }
 if (PHP_SAPI !== 'cli') {
+    if (config('session_storage')==='database') session_set_save_handler(new DatabaseSession(),true);
+    ini_set('session.use_strict_mode','1');
     session_name('FurnitureRgr');
-    session_set_cookie_params(['httponly' => true, 'samesite' => 'Lax', 'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off']);
+    session_set_cookie_params(['httponly' => true, 'samesite' => 'Lax', 'secure' => getenv('VERCEL')==='1' || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')]);
     session_start();
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: SAMEORIGIN');

@@ -2,12 +2,12 @@
 declare(strict_types=1);
 require dirname(__DIR__).'/app/bootstrap.php';
 $_SESSION=[];
-$base='http://127.0.0.1:8020';$results=[];$cookies=[];
+$base=getenv('RGR_TEST_BASE')?:'http://127.0.0.1:8020';$results=[];$cookies=[];
 function check(string $name,bool $pass):void { global $results;$results[]=['test'=>$name,'passed'=>$pass];echo ($pass?'PASS ':'FAIL ').$name."\n"; }
 function request(string $path,?array $post=null,string $session='public',array $files=[]):array {
     global $base,$cookies;
     $cookies[$session]??=tempnam(sys_get_temp_dir(),'rgr-cookie-');
-    $ch=curl_init($base.$path);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_HEADER=>true,CURLOPT_COOKIEJAR=>$cookies[$session],CURLOPT_COOKIEFILE=>$cookies[$session],CURLOPT_TIMEOUT=>15]);
+    $ch=curl_init($base.$path);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_HEADER=>true,CURLOPT_COOKIEJAR=>$cookies[$session],CURLOPT_COOKIEFILE=>$cookies[$session],CURLOPT_TIMEOUT=>30,CURLOPT_CAINFO=>ROOT.'/config/certs/ca-bundle.pem']);
     if($post!==null)curl_setopt_array($ch,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$files?array_merge($post,$files):http_build_query($post)]);
     $response=curl_exec($ch);if($response===false)throw new RuntimeException(curl_error($ch));
     $status=curl_getinfo($ch,CURLINFO_RESPONSE_CODE);$size=curl_getinfo($ch,CURLINFO_HEADER_SIZE);curl_close($ch);
@@ -15,7 +15,7 @@ function request(string $path,?array $post=null,string $session='public',array $
 }
 function token(array $response,string $name='csrf'):string { if(!preg_match('/name="'.preg_quote($name,'/').'" value="([^"]*)"/',$response['body'],$m))throw new RuntimeException('Token not found: '.$name);return html_entity_decode($m[1]); }
 function location(array $r):string { preg_match('/^Location:\s*(.+)$/mi',$r['headers'],$m);return trim($m[1]??''); }
-$nonce='qa-'.bin2hex(random_bytes(4));$newArticle=null;$managerId=null;$upload=null;
+$nonce='qa-'.bin2hex(random_bytes(4));$newArticle=null;$managerId=null;$upload=null;$order=null;
 try {
     foreach(['/','/catalog','/catalog/type/1','/catalog/type/1?subtype=1','/catalog/product/1','/page/about','/page/documents','/news','/promotions','/designers','/contacts','/directions','/sitemap','/order'] as $path){$r=request($path);check('GET '.$path,$r['status']===200&&!preg_match('~(?:<b>)?(?:Warning|Notice|Deprecated|Fatal error)(?:</b>)?:~',$r['body'])&&!str_contains($r['body'],'Undefined array key'));}
     check('Private configuration not exposed',request('/config/app.php')['status']===404);
@@ -47,17 +47,22 @@ try {
     check('Two item snapshots stored',count(DB::all('SELECT * FROM order_items WHERE order_id=?',[$order['id']]))===2);
     check('Confirmation accessible',request($success)['status']===200);
     $again=request('/order',$payload);check('Double submission is idempotent',$again['status']===303&&location($again)===$success&&(int)DB::one('SELECT COUNT(*) AS n FROM orders')['n']===$count+1);
-    check('SMTP notification accepted by local server',DB::one('SELECT status FROM mail_outbox WHERE order_id=?',[$order['id']])['status']==='sent');
-    $savedPort=$config['smtp_port'];$config['smtp_port']=1;
-    DB::run("UPDATE mail_outbox SET status='pending' WHERE order_id=?",[$order['id']]);
-    check('SMTP failure preserves order',!Mailer::sendOrder((int)$order['id']) && (bool)DB::one('SELECT id FROM orders WHERE id=?',[$order['id']]) && DB::one('SELECT status FROM mail_outbox WHERE order_id=?',[$order['id']])['status']==='failed');
-    $config['smtp_port']=$savedPort;
-    check('Failed notification can be retried',Mailer::sendOrder((int)$order['id']) && DB::one('SELECT status FROM mail_outbox WHERE order_id=?',[$order['id']])['status']==='sent');
+    if(config('mail_enabled')) {
+        check('SMTP notification accepted by local server',DB::one('SELECT status FROM mail_outbox WHERE order_id=?',[$order['id']])['status']==='sent');
+        $savedPort=$config['smtp_port'];$config['smtp_port']=1;
+        DB::run("UPDATE mail_outbox SET status='pending' WHERE order_id=?",[$order['id']]);
+        check('SMTP failure preserves order',!Mailer::sendOrder((int)$order['id']) && (bool)DB::one('SELECT id FROM orders WHERE id=?',[$order['id']]) && DB::one('SELECT status FROM mail_outbox WHERE order_id=?',[$order['id']])['status']==='failed');
+        $config['smtp_port']=$savedPort;
+        check('Failed notification can be retried',Mailer::sendOrder((int)$order['id']) && DB::one('SELECT status FROM mail_outbox WHERE order_id=?',[$order['id']])['status']==='sent');
+    } else {
+        check('Unconfigured SMTP leaves notification queued',DB::one('SELECT status FROM mail_outbox WHERE order_id=?',[$order['id']])['status']==='pending');
+    }
     check('Unauthenticated admin redirected',request('/admin/content/products')['status']===303);
     $login=request('/admin/login',null,'admin');$adminCsrf=token($login);
     check('Wrong admin password rejected',request('/admin/login',['csrf'=>$adminCsrf,'login'=>'admin','password'=>'wrong'],'admin')['status']===200);
-    preg_match('/Password: (.+)/',file_get_contents(ROOT.'/storage/first-login.txt'),$m);
-    $r=request('/admin/login',['csrf'=>$adminCsrf,'login'=>'admin','password'=>trim($m[1])],'admin');check('Admin login',$r['status']===303&&location($r)==='/admin');
+    $password=getenv('RGR_TEST_ADMIN_PASSWORD');
+    if(!$password){preg_match('/Password: (.+)/',file_get_contents(ROOT.'/storage/first-login.txt'),$m);$password=trim($m[1]);}
+    $r=request('/admin/login',['csrf'=>$adminCsrf,'login'=>'admin','password'=>$password],'admin');check('Admin login',$r['status']===303&&location($r)==='/admin');
     $adminCsrf=token(request('/admin',null,'admin'));
     check('Admin sees all sections',request('/admin/content/products',null,'admin')['status']===200);
     check('Delete is POST-only',request('/admin/content/news/delete/1',null,'admin')['status']===405);
@@ -71,7 +76,9 @@ try {
     check('Admin content update',request('/admin/content/news/edit/'.$newArticle,$edit,'admin')['status']===303);
     check('Unpublished content is hidden',request('/article/'.$newArticle)['status']===404);
     $r=request('/admin/upload?section=news',['csrf'=>$adminCsrf],'admin',['file'=>new CURLFile(ROOT.'/public/assets/images/sofa.jpg','image/jpeg','sofa.jpg')]);$uploaded=json_decode($r['body'],true);$upload=$uploaded['location']??null;
-    check('Valid inline image uploaded',$r['status']===200&&$upload&&is_file(ROOT.'/public'.$upload));
+    $uploadExists=$upload && (config('upload_storage')==='database' ? (bool)DB::one('SELECT filename FROM stored_uploads WHERE filename=?',[basename($upload)]) : is_file(ROOT.'/public'.$upload));
+    check('Valid inline image uploaded',$r['status']===200&&$uploadExists);
+    if($upload){$image=request($upload);check('Uploaded image persists and is served',$image['status']===200&&hash('sha256',$image['body'])===hash_file('sha256',ROOT.'/public/assets/images/sofa.jpg'));}
     $r=request('/admin/upload?section=news',['csrf'=>$adminCsrf],'admin',['file'=>new CURLFile(__FILE__,'image/jpeg','fake.jpg')]);check('Fake image rejected',$r['status']===422);
     $managerLogin='qa_'.bin2hex(random_bytes(4));$managerPassword='Check!'.bin2hex(random_bytes(6));
     $r=request('/admin/managers',['csrf'=>$adminCsrf,'login'=>$managerLogin,'password'=>$managerPassword,'active'=>'1','permissions'=>['news'],'role'=>'admin'],'admin');$managerId=DB::one('SELECT id FROM users WHERE login=?',[$managerLogin])['id']??null;
@@ -91,9 +98,13 @@ try {
     $home=DB::one("SELECT id FROM articles WHERE kind='page' AND slug='home'");
     check('System home page cannot be deleted',request('/admin/content/pages/delete/'.$home['id'],['csrf'=>$adminCsrf],'admin')['status']===303 && request('/')['status']===200);
 }finally {
+    if($order)DB::run('DELETE FROM orders WHERE id=? AND submission_key=?',[$order['id'],$order['submission_key']]);
     if($newArticle)DB::run('DELETE FROM articles WHERE id=?',[$newArticle]);
     if($managerId)DB::run('DELETE FROM users WHERE id=?',[$managerId]);
-    if($upload&&str_starts_with($upload,'/uploads/'))@unlink(ROOT.'/public'.$upload);
+    if($upload&&str_starts_with($upload,'/uploads/')) {
+        if(config('upload_storage')==='database')DB::run('DELETE FROM stored_uploads WHERE filename=?',[basename($upload)]);
+        else @unlink(ROOT.'/public'.$upload);
+    }
     foreach($cookies as $file)@unlink($file);
 }
 $report=['date'=>date(DATE_ATOM),'passed'=>count(array_filter($results,fn($x)=>$x['passed'])),'total'=>count($results),'tests'=>$results];

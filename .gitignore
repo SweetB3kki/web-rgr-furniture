@@ -7,6 +7,9 @@
 /reports/qa/
 /reports/*.log
 .env
+.env.*
+/.vercel/
+/dist/
 /config/local.php
 /ASSETS.md
 /CHECKLIST.md
